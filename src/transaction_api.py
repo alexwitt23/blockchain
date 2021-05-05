@@ -1,4 +1,5 @@
-"""This file defines the REST API were transaction can be executed."""
+"""This API allows the creation and deletion of users and RSA secured
+transactions."""
 
 import datetime
 import json
@@ -28,14 +29,17 @@ def create_user():
     # TODO(shawn): Check if username is in the database and return and error if it is
     ...
 
+    # Generate a new public and private key used to sign transactions.
     (pubkey, private) = rsa.newkeys(512)
 
+    # Update the user's info with the keys.
     new_user.update(
         {
             "private_key": private.save_pkcs1().decode("utf-8"),
             "public_key": pubkey.save_pkcs1().decode("utf-8"),
         }
     )
+    # Write the user's information to the database.
     _RD.set(new_user["username"], pickle.dumps(new_user))
 
     return flask.jsonify("Account created!"), 201
@@ -59,8 +63,10 @@ def create_transaction():
     transaction = request.get_json(force=True)
     from_username = transaction["from"]["username"]
 
-    # TODO: Check that the from user exists
-    # TODO: Check that the to user exists
+    # TODO(shawn): Check that the from user exists
+    ...
+    # TODO(shawn): Check that the to user exists
+    ...
 
     info = pickle.loads(_RD.get(from_username))
     private_key = rsa.PrivateKey.load_pkcs1(info["private_key"])
