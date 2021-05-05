@@ -64,17 +64,15 @@ def create_transaction():
 
     info = pickle.loads(_RD.get(from_username))
     private_key = rsa.PrivateKey.load_pkcs1(info["private_key"])
-    signature = rsa.sign(
-        json.dumps(transaction).encode("utf-8").strip(), private_key, "SHA-1"
-    )
+    signature = rsa.sign(json.dumps(transaction).encode(), private_key, "SHA-256")
     # Update the transaction with the signed payment and the timestamp
     transaction.update(
         {
             "from": {
                 "username": info["public_key"],
-                "signature": signature.decode("latin-1"),
+                "signature": signature.decode("utf-8", "ignore"),
             },
-            "timestamp": str(datetime.datetime.now().isoformat())
+            "timestamp": str(datetime.datetime.now().isoformat()),
         }
     )
 

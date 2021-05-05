@@ -4,13 +4,14 @@ This is also the API new users and transactions can be created through."""
 import hashlib
 import json
 import os
+import copy
 
 import flask
 from flask import request
 import redis
 import requests
 
-NODE_NETWORK = set()
+NODE_NETWORK = {}
 
 _NODES_IP = os.environ.get("NODES_IP", "0.0.0.0")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
@@ -23,7 +24,16 @@ def add_node():
     """"""
     # Send this transaction to all the nodes.
     node_id = request.args.get("node_id")
-    NODE_NETWORK.add(node_id)
+    node_port = request.args.get("node_port")
+    NODE_NETWORK[node_id] = node_port
+    return flask.jsonify("Node added to network"), 201
+
+
+@app.route("/node/delete", methods=["GET"])
+def remove_node():
+    """"""
+    node_id = request.args.get("node_id")
+    del NODE_NETWORK[node_id]
     return flask.jsonify("Node added to network"), 201
 
 
@@ -34,12 +44,30 @@ def project_transaction():
     transaction = request.get_json(force=True)
     rd.set(transaction["timestamp"], json.dumps(transaction, sort_keys=True))
     headers = {"content-type": "application/json"}
-    for node_idx in NODE_NETWORK:
+    for node_idx, node_port in NODE_NETWORK.items():
         requests.post(
-            f"http://{_NODES_IP}:5002/nodes/{node_idx}/transaction/new",
+            f"http://{_NODES_IP}:{node_port}/nodes/{node_idx}/transaction/new",
             headers=headers,
-            data=json.dumps(transaction, sort_keys=True),
+            data=copy.copy(json.dumps(transaction, sort_keys=True)),
         ).content
+
+    return flask.jsonify("Transaction added to ledger."), 201
+
+
+@app.route("/block/new", methods=["POST"])
+def distribute_chain():
+    """"""
+    # Send this chain to all the nodes.
+    sender_node = request.args.get("sender")
+    block_chain = request.get_json(force=True)
+    headers = {"content-type": "application/json"}
+    for node_idx, node_port in NODE_NETWORK.items():
+        if node_idx != sender_node:
+            requests.post(
+                f"http://{_NODES_IP}:{node_port}/nodes/{node_idx}/resolve",
+                headers=headers,
+                data=copy.copy(json.dumps(block_chain, sort_keys=True)),
+            ).content
 
     return flask.jsonify("Transaction added to ledger."), 201
 
