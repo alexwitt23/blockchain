@@ -1,17 +1,19 @@
-import redis
+
+import hashlib
+import json
 import os
+import pickle
+import redis
+import threading
+
 import flask
 from flask import request
 import requests
-import pickle
-import threading
-import json
-import hashlib
 import uuid
 
-_GLOBAL_PORT = 5000
 NODE_IDX = str(uuid.uuid4())
 
+_NETWORK_IP = os.environ.get("NETWORK_IP", "0.0.0.0")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _BLOCK_CHAIN = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
 app = flask.Flask("blockchain")
@@ -74,5 +76,5 @@ def project_transaction():
 
 if __name__ == "__main__":
     # Register this node to the network
-    requests.get(f"http://0.0.0.0:5001/node/new?node_id={NODE_IDX}")
+    requests.get(f"http://{_NETWORK_IP}:5001/node/new?node_id={NODE_IDX}")
     app.run(host="0.0.0.0", port=5002, debug=True, use_reloader=False)

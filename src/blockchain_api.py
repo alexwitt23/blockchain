@@ -12,6 +12,7 @@ import requests
 
 NODE_NETWORK = set()
 
+_NODES_IP = os.environ.get("NODES_IP", "0.0.0.0")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 rd = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
 app = flask.Flask("blockchain")
@@ -35,7 +36,7 @@ def project_transaction():
     headers = {"content-type": "application/json"}
     for node_idx in NODE_NETWORK:
         requests.post(
-            f"http://0.0.0.0:5002/nodes/{node_idx}/transaction/new",
+            f"http://{_NODES_IP}:5002/nodes/{node_idx}/transaction/new",
             headers=headers,
             data=json.dumps(transaction, sort_keys=True),
         ).content

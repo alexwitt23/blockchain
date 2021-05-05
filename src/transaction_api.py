@@ -12,6 +12,7 @@ import requests
 import rsa
 
 HOST_IP = os.environ.get("HOST", "0.0.0.0")
+_NETWORK_IP = os.environ.get("NETWORK_IP", "0.0.0.0")
 app = flask.Flask("transaction")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _RD = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
@@ -79,7 +80,7 @@ def create_transaction():
 
     headers = {"content-type": "application/json"}
     return requests.post(
-        "http://0.0.0.0:5001/transaction/new",
+        f"http://{_NETWORK_IP}:5001/transaction/new",
         headers=headers,
         data=json.dumps(transaction, sort_keys=True),
     ).content

@@ -18,6 +18,7 @@ services:
         environment:
         - REDIS_IP=redis
         - HOST="transaction_api"
+        - NETWORK_IP=blockchain_api
     blockchain_api:
         build:
             context: .
@@ -26,7 +27,7 @@ services:
         - "5001:5001"
         environment:
         - REDIS_IP=redis
-        - HOST="0.0.0.0"
+        - NODES_IP=node_api
     node_api:
         build:
             context: .
@@ -35,4 +36,8 @@ services:
         - "5002:5002"
         environment:
         - REDIS_IP=redis
-        - HOST="0.0.0.0"
+        - NETWORK_IP=blockchain_api
+        depends_on:
+        - blockchain_api
+        - redis
+        - transaction_api
