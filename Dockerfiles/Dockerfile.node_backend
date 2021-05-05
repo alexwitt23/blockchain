@@ -1,0 +1,10 @@
+FROM python:3.9
+
+WORKDIR /
+ADD requirements.txt /requirements.txt
+RUN python3 -m pip install -r requirements.txt
+COPY src /src
+WORKDIR /src
+ENV PYTHONPATH=/
+
+ENTRYPOINT ["python3", "/src/full_node.py"]
