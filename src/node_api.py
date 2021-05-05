@@ -4,6 +4,7 @@ import json
 import os
 import pickle
 import redis
+import ast
 import threading
 
 import flask
@@ -44,6 +45,8 @@ class FullNode:
                 for key, value in block.items()
                 if key not in ["hash", "nonce"]
             }
+            original_block = str(original_block) + str(block["nonce"])
+            assert hashlib.sha256(str(original_block).encode()).hexdigest() == block["hash"]
 
             previous_hash = block["hash"]
 
@@ -61,18 +64,17 @@ class FullNode:
             block[key.split(":", 1)[-1]] = data
 
         block.update({"previous_hash": self.previous_hash})
-        block = json.dumps(block, sort_keys=True)
-
+        block = str(block)
         for key in _BLOCK_CHAIN.scan_iter(f"ledger-{NODE_IDX}:*"):
             _BLOCK_CHAIN.delete(key)
 
         new_hash = hashlib.sha256(block.encode()).hexdigest()
-        nonce = 0
-        while new_hash[:2] != "000":
+        nonce = -1
+        while new_hash[:2] != "00":
+            nonce += 1
             new_block = block + str(nonce)
             new_hash = hashlib.sha256(new_block.encode()).hexdigest()
-            nonce += 1
-        block = json.loads(block)
+        block = ast.literal_eval(block)
 
         block.update({"nonce": nonce, "hash": new_hash})
         self.block_chain.append(block)
