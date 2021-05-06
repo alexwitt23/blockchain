@@ -2,26 +2,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: alexwitt-hw7-worker-deployment
+  name: node-deployment
   labels:
-    app: alexwitt-hw7-worker
+    app: blockchain-node
     username: alexwitt
     env: test
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: alexwitt-test-worker
+      app: blockchain-node
   template:
     metadata:
       labels:
-        app: alexwitt-test-worker
+        app: blockchain-node
         username: alexwitt
         env: test
     spec:
       containers:
-      - name: alexwitt-test-worker
-        image: alexwitt23/coe332-hw07
+      - name: blockchain-node
+        image: alexwitt23/node
         env:
         - name: REDIS_IP
           value: "10.103.175.2"
@@ -30,4 +30,4 @@ spec:
             fieldRef:
               fieldPath: status.podIP
         imagePullPolicy: Always
-        command: [ "python3", "worker.py" ]
+        command: [ "python3", "src/node_api.py" ]

@@ -62,3 +62,13 @@ that are present across each node should be 100% identical.
 ```
 curl 0.0.0.0:5001/history/nodes
 ```
+
+
+## Kubernetes
+
+```
+kubectl apply -f deploy/blockchain_api && \
+  kubectl apply -f deploy/db && \
+  kubectl apply -f deploy/transaction_api && \
+  kubectl apply -f deploy/node
+```
