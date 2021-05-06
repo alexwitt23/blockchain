@@ -1,6 +1,6 @@
 """This file defines the REST API that mining nodes use to communicate with each other.
 This is also the API new users and transactions can be created through."""
-
+import ast
 import hashlib
 import json
 import os
@@ -46,20 +46,19 @@ def distribute_chain():
 
     return flask.jsonify("Transaction added to ledger."), 201
 
+
 @app.route("/history", methods=["GET"])
 def get_history():
     """
     curl 0.0.0.0:5001/history
     """
-    for node_idx, node_port in NODE_NETWORK.items():
-        print(node_idx, node_port)
-        response = requests.get(f"http://{_NODES_IP}:{node_port}/nodes/{node_idx}/blockchain")
+    blockchain = {}
 
-    return_str = ""
-    for block in response.content:
-        return_str += str(block) + "\n"
+    num_blocks = len(list(_RD.scan_iter("block-*")))
+    for idx in range(num_blocks):
+        blockchain[f"block:{idx}"] = json.loads(_RD.get(f"block-{idx}".encode()))
 
-    return flask.jsonify(response.content), 201
+    return flask.jsonify(blockchain), 201
 
 
 if __name__ == "__main__":

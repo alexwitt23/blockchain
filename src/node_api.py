@@ -41,14 +41,19 @@ class FullNode:
         self.transaction_timestamps = set()
         self.num_transactions_per_block = 2
 
-        # Fetch the current state of the blockchain.
-        logging.info("Initializing node with blockchain history.")
-        for key in _BLOCK_CHAIN.scan_iter("block-*"):
-            self.block_num += 0
+        # Fetch the current state of the blockchain. We want to keep this in order.
+        self.num_blocks = len(list(_BLOCK_CHAIN.scan_iter("block-*")))
+        logging.info(list(_BLOCK_CHAIN.scan_iter("block-*")))
+        logging.info(f"Initializing node with blockchain history. Found {self.num_blocks} blocks.")
+        for block in range(self.num_blocks):
+            key = f"block-{block}".encode()
             logging.info(f"Retrieving {key}.")
             block = json.loads(_BLOCK_CHAIN.get(key), encoding="utf-8")
+            # Now add all the transactions of this block to the history. This is
+            # so we know which transactions are new or not.
             for transaction in block["transactions"]:
                 self.transaction_timestamps.add(transaction)
+            self.previous_hash = block["previous_hash"]
         logging.info(self.transaction_timestamps)
         
 
@@ -104,7 +109,7 @@ class FullNode:
                     break
 
             # If there are no transactions for this block, wait.
-            if not block:
+            if not block["transactions"]:
                 logging.info("No new transactions to mine.")
                 time.sleep(2.0)
                 continue
@@ -139,12 +144,12 @@ class FullNode:
             self.block_chain.append(block)
 
             self.previous_hash = new_hash
-            self.block_num += 1
 
             # Now with a new mined block, send out the chain.
             _BLOCK_CHAIN.set(
-                f"block-{len(self.block_chain)}", json.dumps(block, sort_keys=True)
+                f"block-{self.block_num}", json.dumps(block, sort_keys=True)
             )
+            self.block_num += 1
     
     def check_for_transactions(self):
         """Run an infinite loop to look for any new transactions that have been
@@ -167,47 +172,12 @@ class FullNode:
             time.sleep(2.0)
 
 
-node = FullNode()
-thread = threading.Thread(target=node.check_for_transactions)
-thread.daemon = True
-thread.start()
-thread = threading.Thread(target=node.mine_block)
-thread.daemon = True
-thread.start()
-
-
-@app.route(f"/nodes/{NODE_IDX}/transaction/new", methods=["POST"])
-def project_transaction():
-    """"""
-    logging.info("Recieved new transaction.")
-    # Send this transaction to all the nodes.
-    transaction = request.get_json(force=True)
-    _BLOCK_CHAIN.set(
-        f"ledger-{NODE_IDX}:{transaction['timestamp']}", pickle.dumps(transaction)
-    )
-    logging.info("Mining new block")
-
-    return flask.jsonify("Transaction added to ledger."), 201
-
-
-@app.route(f"/nodes/{NODE_IDX}/resolve", methods=["POST"])
-def resolve_chain():
-    """"""
-    # Send this transaction to all the nodes.
-    chain = request.get_json(force=True)
-    if not node.check_valid_chain(chain):
-        print("Invalid chain. Someone is doing something malicious!")
-    else:
-        node.update_chain(chain)
-
-    return flask.jsonify("Transaction added to ledger."), 201
-
-
-@app.route(f"/nodes/{NODE_IDX}/blockchain", methods=["GET"])
-def get_history():
-    """"""
-    return json.dumps(node.block_chain), 201
-
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port="5002", debug=True, use_reloader=False)
+
+    node = FullNode()
+    thread = threading.Thread(target=node.check_for_transactions)
+    thread.daemon = True
+    thread.start()
+    thread = threading.Thread(target=node.mine_block)
+    thread.daemon = True
+    thread.start()

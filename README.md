@@ -42,3 +42,9 @@ curl 0.0.0.0:5000/user/delete?username=myname'
 ```
 curl 0.0.0.0:5000/transaction/new -d '{"from": {"username": "myname", "password": "password"}, "to": "notme", "amount": 100}' -H 'Content-Type: application/json'
 ```
+
+## Blockchain API
+
+```
+curl 0.0.0.0:5001/history
+```

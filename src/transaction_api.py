@@ -79,11 +79,11 @@ def create_transaction():
     transaction = request.get_json(force=True)
     from_username = transaction["from"]["username"]
 
-    # TODO(shawn): Check that the from user exists and the password is right
+    # TODO(shawn): Check that the from user exists
     ...
     # TODO(shawn): Check that the to user exists
     ...
-
+    print(from_username)
     info = pickle.loads(_RD.get(from_username))
     private_key = rsa.PrivateKey.load_pkcs1(info["private_key"])
     signature = rsa.sign(json.dumps(transaction).encode(), private_key, "SHA-256")
