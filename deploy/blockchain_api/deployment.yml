@@ -2,31 +2,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: alexwitt-hw7-flask-deployment
+  name: blockchain-deployment
   labels:
-    app: alexwitt-hw7-flask
+    app: blockchain-flask
     username: alexwitt
     env: test
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: alexwitt-hw7-flask
+      app: blockchain-flask
   template:
     metadata:
       labels:
-        app: alexwitt-hw7-flask
+        app: blockchain-flask
         username: alexwitt
         env: test
     spec:
       containers:
-      - name: alexwitt-hw7-flask
-        image: alexwitt23/coe332-hw07
+      - name: blockchain-flask
+        image: alexwitt23/blockchain-api
         ports:
         - name: flask
-          containerPort: 5000
+          containerPort: 5001
         env:
         - name: "REDIS_IP"
           value: "10.103.175.2"
         imagePullPolicy: Always
-        command: [ "python3", "api.py" ]
+        command: [ "python3", "src/blockchain_api.py" ]

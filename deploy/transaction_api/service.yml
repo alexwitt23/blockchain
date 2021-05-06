@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: alexwitt-hw7-flask-service
+  name: transaction-service
   labels:
     username: alexwitt
     env: test
@@ -11,7 +11,7 @@ spec:
   selector:
     username: alexwitt
     env: test
-    app: alexwitt-hw7-flask
+    app: blockchain-transaction
   ports:
   - name: flask
     port: 5000

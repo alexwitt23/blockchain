@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - name: blockchain-transaction
-        image: alexwitt23/coe332-hw07
+        image: alexwitt23/transaction-api
         ports:
         - name: flask
           containerPort: 5000
@@ -29,4 +29,4 @@ spec:
         - name: "REDIS_IP"
           value: "10.103.175.2"
         imagePullPolicy: Always
-        command: [ "python3", "api.py" ]
+        command: [ "python3", "src/transaction_api.py" ]
