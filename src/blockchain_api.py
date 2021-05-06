@@ -24,7 +24,8 @@ def add_node():
     """Add a node to the network registry."""
     # Send this transaction to all the nodes.
     node_id = request.args.get("node_id")
-    node_port = request.args.get("node_port")
+    node_port = request.url.split(":")[-1].replace("/","")
+    print(node_id, request)
     NODE_NETWORK[node_id] = node_port
     return flask.jsonify("Node added to network"), 201
 

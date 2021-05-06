@@ -11,8 +11,7 @@ import redis
 import requests
 import rsa
 
-HOST_IP = os.environ.get("HOST", "0.0.0.0")
-_NETWORK_IP = os.environ.get("NETWORK_IP", "0.0.0.0")
+_BLOCKCHAIN_IP = os.environ.get("BLOCKCHAIN_IP", "0.0.0.0")
 app = flask.Flask("transaction")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _RD = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
@@ -37,6 +36,8 @@ def create_user(username: str, password: str):
     # Write the user's information to the database.
     _RD.set(new_user["username"], pickle.dumps(new_user))
 
+    return "Account created.", 201
+
 
 
 @app.route("/user/new", methods=["POST"])
@@ -49,9 +50,9 @@ def new_user():
             -H 'Content-Type: application/json'
     """
     new_user = request.get_json(force=True)
-    create_user(new_user["username"], new_user["password"])
+    output, code = create_user(new_user["username"], new_user["password"])
 
-    return flask.jsonify("Account created!"), 201
+    return flask.jsonify(output), code
 
 
 @app.route("/user/delete", methods=["GET"])
@@ -71,7 +72,7 @@ def create_transaction():
 
     Example:
         curl 0.0.0.0:5000/transaction/new \
-        -d '{"from": {"username": "myname", "password": "password"}, "to": "notme", "amount": 100}' \
+        -d '{"from": {"username": "genesis", "password": "password"}, "to": "foo", "amount": 10000}' \
         -H 'Content-Type: application/json'
     """
     # Take the from's username and password and extract the private to sign the transaction.
@@ -99,7 +100,7 @@ def create_transaction():
 
     headers = {"content-type": "application/json"}
     return requests.post(
-        f"http://{_NETWORK_IP}:5001/transaction/new",
+        f"http://{_BLOCKCHAIN_IP}:5001/transaction/new",
         headers=headers,
         data=json.dumps(transaction, sort_keys=True),
     ).content

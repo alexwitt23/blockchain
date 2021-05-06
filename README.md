@@ -22,6 +22,10 @@ To run the services locally, please install docker compose. Then run:
 make up
 ```
 
+```
+docker-compose up -d --scale node_api=2
+```
+
 ## Transaction API
 
 * `/user/new`: 

@@ -15,7 +15,6 @@ import requests
 import uuid
 
 NODE_IDX = str(uuid.uuid4())
-_NODE_PORT = os.environ.get("PORT")
 _NETWORK_IP = os.environ.get("NETWORK_IP", "0.0.0.0")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _BLOCK_CHAIN = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
@@ -147,14 +146,13 @@ def get_history():
     return json.dumps(node.block_chain), 201
 
 
-
 if __name__ == "__main__":
     try:
         # Register this node to the network
         requests.get(
-            f"http://{_NETWORK_IP}:5001/node/new?node_id={NODE_IDX}&node_port={_NODE_PORT}"
+            f"http://{_NETWORK_IP}:5001/node/new?node_id={NODE_IDX}"
         )
-        app.run(host="0.0.0.0", port=_NODE_PORT, debug=True, use_reloader=False)
+        app.run(host="0.0.0.0", port="5002", debug=True, use_reloader=False)
     finally:
         # Delete the node from the network
         requests.get(f"http://{_NETWORK_IP}:5001/node/delete?node_id={NODE_IDX}")

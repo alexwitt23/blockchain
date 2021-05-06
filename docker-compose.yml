@@ -18,7 +18,7 @@ services:
         environment:
         - REDIS_IP=redis
         - HOST="transaction_api"
-        - NETWORK_IP=blockchain_api
+        - BLOCKCHAIN_IP=blockchain_api
     blockchain_api:
         build:
             context: .
