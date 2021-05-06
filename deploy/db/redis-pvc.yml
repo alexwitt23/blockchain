@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: alexwitt-hw7-redis-pvc
+  name: blockchain-redis-pvc
   labels:
     username: alexwitt
     env: test

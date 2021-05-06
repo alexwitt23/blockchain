@@ -29,4 +29,3 @@ spec:
         - name: "REDIS_IP"
           value: "10.103.175.2"
         imagePullPolicy: Always
-        command: [ "python3", "src/transaction_api.py" ]

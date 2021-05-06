@@ -72,3 +72,10 @@ kubectl apply -f deploy/blockchain_api && \
   kubectl apply -f deploy/transaction_api && \
   kubectl apply -f deploy/node
 ```
+
+```
+kubectl delete -f deploy/blockchain_api && \
+  kubectl delete -f deploy/db && \
+  kubectl delete -f deploy/transaction_api && \
+  kubectl delete -f deploy/node
+```
