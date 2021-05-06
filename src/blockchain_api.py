@@ -15,27 +15,8 @@ NODE_NETWORK = {}
 
 _NODES_IP = os.environ.get("NODES_IP", "0.0.0.0")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
-rd = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
+_RD = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
 app = flask.Flask("blockchain")
-
-
-@app.route("/node/new", methods=["GET"])
-def add_node():
-    """Add a node to the network registry."""
-    # Send this transaction to all the nodes.
-    node_id = request.args.get("node_id")
-    node_port = request.url.split(":")[-1].replace("/","")
-    print(node_id, request)
-    NODE_NETWORK[node_id] = node_port
-    return flask.jsonify("Node added to network"), 201
-
-
-@app.route("/node/delete", methods=["GET"])
-def remove_node():
-    """"""
-    node_id = request.args.get("node_id")
-    del NODE_NETWORK[node_id]
-    return flask.jsonify("Node added to network"), 201
 
 
 @app.route("/transaction/new", methods=["POST"])
@@ -43,14 +24,7 @@ def project_transaction():
     """"""
     # Send this transaction to all the nodes.
     transaction = request.get_json(force=True)
-    rd.set(transaction["timestamp"], json.dumps(transaction, sort_keys=True))
-    headers = {"content-type": "application/json"}
-    for node_idx, node_port in NODE_NETWORK.items():
-        requests.post(
-            f"http://{_NODES_IP}:{node_port}/nodes/{node_idx}/transaction/new",
-            headers=headers,
-            data=copy.copy(json.dumps(transaction, sort_keys=True)),
-        ).content
+    _RD.set(f"transaction:{transaction['timestamp']}", json.dumps(transaction, sort_keys=True))
 
     return flask.jsonify("Transaction added to ledger."), 201
 

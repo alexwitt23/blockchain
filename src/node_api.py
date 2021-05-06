@@ -2,6 +2,7 @@ import ast
 import copy
 import hashlib
 import json
+import time
 import logging
 import os
 import pathlib
@@ -37,6 +38,19 @@ class FullNode:
         self.block_num = 0
         self.previous_hash = "0" * 10
         self.block_chain = []
+        self.transaction_timestamps = set()
+        self.num_transactions_per_block = 2
+
+        # Fetch the current state of the blockchain.
+        logging.info("Initializing node with blockchain history.")
+        for key in _BLOCK_CHAIN.scan_iter("block-*"):
+            self.block_num += 0
+            logging.info(f"Retrieving {key}.")
+            block = json.loads(_BLOCK_CHAIN.get(key), encoding="utf-8")
+            for transaction in block["transactions"]:
+                self.transaction_timestamps.add(transaction)
+        logging.info(self.transaction_timestamps)
+        
 
     def check_valid_chain(self, blockchain):
         """Check that a given blockchain is valid."""
@@ -68,46 +82,98 @@ class FullNode:
             self.block_chain = copy.deepcopy(blockchain)
 
     def mine_block(self):
-        block = {}
-        for key in _BLOCK_CHAIN.scan_iter(f"ledger-{NODE_IDX}:*"):
-            data = pickle.loads(_BLOCK_CHAIN.get(key))
-            key = key.decode("utf-8")
-            block[key.split(":", 1)[-1]] = data
+        """Inifinite loop to look for new transactions in the node's database.
+        If there are some number of transactions, load them and begin to mine
+        the block."""
 
-        block.update({"previous_hash": self.previous_hash})
-        block = str(block)
-        for key in _BLOCK_CHAIN.scan_iter(f"ledger-{NODE_IDX}:*"):
-            _BLOCK_CHAIN.delete(key)
+        while True:
 
-        new_hash = hashlib.sha256(block.encode()).hexdigest()
-        nonce = -1
-        while new_hash[:2] != "00":
-            nonce += 1
-            new_block = block + str(nonce)
-            new_hash = hashlib.sha256(new_block.encode()).hexdigest()
-            logging.info(f"Trying nonce: {nonce}")
-        
-        logging.info(f"Sucessful hash: {new_hash}")
+            # Collect all the transactions from the ledger. Keep transactions in a 
+            # separate key.
+            # TODO(alex): is there a limit to the number of transactions per block?
+            block = {"transactions": {}}
+            transactions = 0
+            this_block_keys = set()
+            for key in _BLOCK_CHAIN.scan_iter(f"ledger-{NODE_IDX}:*"):
+                this_block_keys.add(key)
+                data = json.loads(_BLOCK_CHAIN.get(key))
+                key = key.decode("utf-8")
+                block["transactions"][key.split(":", 1)[-1]] = data
+                transactions += 1
+                if transactions - 1 > self.num_transactions_per_block:
+                    break
 
-        block = ast.literal_eval(block)
+            # If there are no transactions for this block, wait.
+            if not block:
+                logging.info("No new transactions to mine.")
+                time.sleep(2.0)
+                continue
 
-        block.update({"nonce": nonce, "hash": new_hash})
-        self.block_chain.append(block)
-        self.previous_hash = new_hash
-        self.block_num += 1
+            # Add the previous block's hash to this block.
+            block.update({"previous_hash": self.previous_hash})
+            logging.info(f"[MINING] Mining new block: {json.dumps(block, indent=2)}")
+            
+            block = str(block)
+            # Remove the transactions in the ledger that are being considered in
+            # for this block.
+            for key in _BLOCK_CHAIN.scan_iter(f"ledger-{NODE_IDX}:*"):
+                if key in this_block_keys:
+                    logging.info(f"Removing {key} from the ledger.")
+                    _BLOCK_CHAIN.delete(key)
 
-        # Now with a new mined block, send out the chain
-        block_chain = copy.deepcopy(self.block_chain)
+            new_hash = hashlib.sha256(block.encode()).hexdigest()
+            nonce = -1
+            while new_hash[:2] != "00":
+                nonce += 1
+                new_block = block + str(nonce)
+                new_hash = hashlib.sha256(new_block.encode()).hexdigest()
+                logging.info(f"[MINING] Trying nonce: {nonce}")
+            
+            logging.info(f"Sucessful hash: {new_hash}")
 
-        headers = {"content-type": "application/json"}
-        return requests.post(
-            f"http://{_NETWORK_IP}:5001/block/new?sender={NODE_IDX}",
-            headers=headers,
-            data=json.dumps(block_chain, sort_keys=True),
-        ).content
+            block = ast.literal_eval(block)
+
+            block.update({"nonce": nonce, "hash": new_hash})
+            logging.info(f"New block: {json.dumps(block, indent=2)}")
+
+            self.block_chain.append(block)
+
+            self.previous_hash = new_hash
+            self.block_num += 1
+
+            # Now with a new mined block, send out the chain.
+            _BLOCK_CHAIN.set(
+                f"block-{len(self.block_chain)}", json.dumps(block, sort_keys=True)
+            )
+    
+    def check_for_transactions(self):
+        """Run an infinite loop to look for any new transactions that have been
+        executed. If there is any new transaction, add it to a the node's database.
+        """
+        while True:
+            # Scan the master ledger than copy to this node's ledger. In real life this
+            # copy would be local to the node, here we just reuse the same database but
+            # with a different key to simulate a different
+            for key in _BLOCK_CHAIN.scan_iter("transaction:*"):
+                # TODO(alex): workaround here, fix eventually.
+                key_ = f"{key}"
+                if key_ not in self.transaction_timestamps:
+                    self.transaction_timestamps.add(key_)
+                    _BLOCK_CHAIN.set(
+                        f"ledger-{NODE_IDX}:{key}", _BLOCK_CHAIN.get(key)
+                    )             
+                    logging.info(f"Found new transaction:{key.decode()}")
+            
+            time.sleep(2.0)
 
 
 node = FullNode()
+thread = threading.Thread(target=node.check_for_transactions)
+thread.daemon = True
+thread.start()
+thread = threading.Thread(target=node.mine_block)
+thread.daemon = True
+thread.start()
 
 
 @app.route(f"/nodes/{NODE_IDX}/transaction/new", methods=["POST"])
@@ -120,9 +186,6 @@ def project_transaction():
         f"ledger-{NODE_IDX}:{transaction['timestamp']}", pickle.dumps(transaction)
     )
     logging.info("Mining new block")
-    thread = threading.Thread(target=node.mine_block)
-    thread.daemon = True
-    thread.start()
 
     return flask.jsonify("Transaction added to ledger."), 201
 
@@ -147,12 +210,4 @@ def get_history():
 
 
 if __name__ == "__main__":
-    try:
-        # Register this node to the network
-        requests.get(
-            f"http://{_NETWORK_IP}:5001/node/new?node_id={NODE_IDX}"
-        )
-        app.run(host="0.0.0.0", port="5002", debug=True, use_reloader=False)
-    finally:
-        # Delete the node from the network
-        requests.get(f"http://{_NETWORK_IP}:5001/node/delete?node_id={NODE_IDX}")
+    app.run(host="0.0.0.0", port="5002", debug=True, use_reloader=False)
