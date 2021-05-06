@@ -33,7 +33,7 @@ services:
             context: .
             dockerfile: Dockerfiles/Dockerfile.node_api
         ports:
-        - "5002:5002"
+        - "5002-6000:5002"
         environment:
         - REDIS_IP=redis
         - NETWORK_IP=blockchain_api
@@ -41,3 +41,5 @@ services:
         - blockchain_api
         - redis
         - transaction_api
+        volumes:
+        - ./logging:/logging:rw

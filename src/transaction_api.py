@@ -1,5 +1,4 @@
-"""This API allows the creation and deletion of users and RSA secured
-transactions."""
+"""This API allows the creation and deletion of users and RSA secured transactions."""
 
 import datetime
 import json
@@ -19,13 +18,9 @@ _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _RD = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
 
 
-@app.route("/user/new", methods=["POST"])
-def create_user():
-    """
-    curl 0.0.0.0:5000/user/new -d '{"username": "myname", "password": "password"}' -H 'Content-Type: application/json'
-    """
-    new_user = request.get_json(force=True)
+def create_user(username: str, password: str):
 
+    new_user = {"username": username, "password": password}
     # TODO(shawn): Check if username is in the database and return and error if it is
     ...
 
@@ -42,13 +37,28 @@ def create_user():
     # Write the user's information to the database.
     _RD.set(new_user["username"], pickle.dumps(new_user))
 
+
+
+@app.route("/user/new", methods=["POST"])
+def new_user():
+    """Create a new user who can execute transactions.
+
+    Example:
+        curl 0.0.0.0:5000/user/new \
+            -d '{"username": "myname", "password": "password"}' \
+            -H 'Content-Type: application/json'
+    """
+    new_user = request.get_json(force=True)
+    create_user(new_user["username"], new_user["password"])
+
     return flask.jsonify("Account created!"), 201
 
 
 @app.route("/user/delete", methods=["GET"])
 def delete_user():
-    """
-    curl 0.0.0.0:5000/user/delete?username=myname'
+    """Delete a user from the account database.
+    
+    Example: curl 0.0.0.0:5000/user/delete?username=myname
     """
     # TODO(shawn): Remove the user from the database
     ...
@@ -56,14 +66,19 @@ def delete_user():
 
 @app.route("/transaction/new", methods=["POST"])
 def create_transaction():
-    """
-    curl 0.0.0.0:5000/transaction/new -d '{"from": {"username": "myname", "password": "password"}, "to": "notme", "amount": 100}' -H 'Content-Type: application/json'
+    """Execute a new transaction. There needs to be a 'from' and 'to' keys in the data.
+    The 'from' dictionary should have a user name and password.
+
+    Example:
+        curl 0.0.0.0:5000/transaction/new \
+        -d '{"from": {"username": "myname", "password": "password"}, "to": "notme", "amount": 100}' \
+        -H 'Content-Type: application/json'
     """
     # Take the from's username and password and extract the private to sign the transaction.
     transaction = request.get_json(force=True)
     from_username = transaction["from"]["username"]
 
-    # TODO(shawn): Check that the from user exists
+    # TODO(shawn): Check that the from user exists and the password is right
     ...
     # TODO(shawn): Check that the to user exists
     ...
@@ -91,4 +106,12 @@ def create_transaction():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+
+    # Create some initial users for our blockchain. Someone has to start with the money!
+    create_user("genesis", "password")
+    create_user("foo", "bar")
+
+    # Create the first transaction and put some money into the system.
+    ...
+
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)

@@ -1,10 +1,12 @@
+import ast
 import copy
 import hashlib
 import json
+import logging
 import os
+import pathlib
 import pickle
 import redis
-import ast
 import threading
 
 import flask
@@ -13,12 +15,18 @@ import requests
 import uuid
 
 NODE_IDX = str(uuid.uuid4())
-_NODE_PORT = os.environ.get("PORT", 5000)
+_NODE_PORT = os.environ.get("PORT")
 _NETWORK_IP = os.environ.get("NETWORK_IP", "0.0.0.0")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _BLOCK_CHAIN = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
 app = flask.Flask("blockchain")
-
+_LOG_DIR = pathlib.Path("logging")
+_LOG_DIR.mkdir(exist_ok=True, parents=True)
+logging.basicConfig(
+    filename=_LOG_DIR / f"{NODE_IDX}.txt",
+    format="%(asctime)s %(message)s",
+    level=logging.DEBUG,
+)
 
 class FullNode:
     """This is a full node object."""
@@ -33,6 +41,7 @@ class FullNode:
 
     def check_valid_chain(self, blockchain):
         """Check that a given blockchain is valid."""
+        logging.info("Checking for valid blockchain")
         previous_hash = None
         for block in blockchain:
             if previous_hash is None:
@@ -46,7 +55,10 @@ class FullNode:
                 if key not in ["hash", "nonce"]
             }
             original_block = str(original_block) + str(block["nonce"])
-            assert hashlib.sha256(str(original_block).encode()).hexdigest() == block["hash"]
+            assert (
+                hashlib.sha256(str(original_block).encode()).hexdigest()
+                == block["hash"]
+            )
 
             previous_hash = block["hash"]
 
@@ -74,6 +86,10 @@ class FullNode:
             nonce += 1
             new_block = block + str(nonce)
             new_hash = hashlib.sha256(new_block.encode()).hexdigest()
+            logging.info(f"Trying nonce: {nonce}")
+        
+        logging.info(f"Sucessful hash: {new_hash}")
+
         block = ast.literal_eval(block)
 
         block.update({"nonce": nonce, "hash": new_hash})
@@ -98,11 +114,13 @@ node = FullNode()
 @app.route(f"/nodes/{NODE_IDX}/transaction/new", methods=["POST"])
 def project_transaction():
     """"""
+    logging.info("Recieved new transaction.")
     # Send this transaction to all the nodes.
     transaction = request.get_json(force=True)
     _BLOCK_CHAIN.set(
         f"ledger-{NODE_IDX}:{transaction['timestamp']}", pickle.dumps(transaction)
     )
+    logging.info("Mining new block")
     thread = threading.Thread(target=node.mine_block)
     thread.daemon = True
     thread.start()
@@ -121,6 +139,13 @@ def resolve_chain():
         node.update_chain(chain)
 
     return flask.jsonify("Transaction added to ledger."), 201
+
+
+@app.route(f"/nodes/{NODE_IDX}/blockchain", methods=["GET"])
+def get_history():
+    """"""
+    return json.dumps(node.block_chain), 201
+
 
 
 if __name__ == "__main__":
