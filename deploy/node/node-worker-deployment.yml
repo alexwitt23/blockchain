@@ -24,9 +24,7 @@ spec:
         image: alexwitt23/node
         env:
         - name: REDIS_IP
-          value: "10.103.175.2"
-        - name: WORKER_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
+          value: "10.103.117.109"
+        - name: NETWORK_IP
+          value: "10.107.125.114"
         imagePullPolicy: Always

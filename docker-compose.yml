@@ -26,7 +26,6 @@ services:
         - "5001:5001"
         environment:
         - REDIS_IP=redis
-        - NODES_IP=node_api
     node:
         build:
             context: .
