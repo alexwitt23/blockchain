@@ -51,6 +51,11 @@ curl 0.0.0.0:5001/history
 ```
 
 
+This command will get all the blockchain histories from all the mining nodes. Note,
+since it takes a bit of time for all the nodes to agree on the blockchain state, the
+return of the endpoint might not give chains of equal length. However, all the blocks
+that are present across each node should be 100% identical. 
+
 ```
 curl 0.0.0.0:5001/history/nodes
 ```
