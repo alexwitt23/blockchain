@@ -1,0 +1,34 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alexwitt-hw7-redis-deployment
+  labels:
+    app: alexwitt-hw7-redis
+    username: alexwitt
+    env: test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alexwitt-hw7-redis
+  template:
+    metadata:
+      labels:
+        app: alexwitt-hw7-redis
+        username: alexwitt
+        env: test
+    spec:
+      containers:
+      - name: alexwitt-hw7-redis
+        image: redis:5.0.0
+        volumeMounts:
+        - name: alexwitt-hw7-redis-pvc
+          mountPath: "/data"
+        ports:
+        - name: redis
+          containerPort: 6379
+      volumes:
+      - name: alexwitt-hw7-redis-pvc
+        persistentVolumeClaim:
+          claimName: alexwitt-hw7-redis-pvc

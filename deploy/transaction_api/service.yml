@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alexwitt-hw7-flask-service
+  labels:
+    username: alexwitt
+    env: test
+spec:
+  type: ClusterIP
+  selector:
+    username: alexwitt
+    env: test
+    app: alexwitt-hw7-flask
+  ports:
+  - name: flask
+    port: 5000
+    targetPort: 5000

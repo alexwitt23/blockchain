@@ -1,0 +1,37 @@
+name: CI
+
+on: 
+  push:
+    branches:
+      - master
+jobs:
+
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v2
+      - name: docker login
+        run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD $DOCKER_REGISTRY_URL
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build blockchain-api image
+        run: docker build -f Dockerfiles/Dockerfile.blockchain -t alexwitt23/blockchain-api .
+
+      - name: Push blockchain-api image
+        run: docker push alexwitt23/blockchain-api
+
+      - name: Build transaction-api image
+        run: docker build -f Dockerfiles/Dockerfile.transaction -t alexwitt23/transaction-api .
+
+      - name: Push transaction-api image
+        run: docker push alexwitt23/transaction-api
+
+      - name: Build node image
+        run: docker build -f Dockerfiles/Dockerfile.blockchain -t alexwitt23/node .
+
+      - name: Push node image
+        run: docker push alexwitt23/node

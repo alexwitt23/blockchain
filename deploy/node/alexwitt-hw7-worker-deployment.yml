@@ -1,0 +1,33 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alexwitt-hw7-worker-deployment
+  labels:
+    app: alexwitt-hw7-worker
+    username: alexwitt
+    env: test
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: alexwitt-test-worker
+  template:
+    metadata:
+      labels:
+        app: alexwitt-test-worker
+        username: alexwitt
+        env: test
+    spec:
+      containers:
+      - name: alexwitt-test-worker
+        image: alexwitt23/coe332-hw07
+        env:
+        - name: REDIS_IP
+          value: "10.103.175.2"
+        - name: WORKER_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        imagePullPolicy: Always
+        command: [ "python3", "worker.py" ]

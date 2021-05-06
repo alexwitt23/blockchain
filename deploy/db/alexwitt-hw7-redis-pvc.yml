@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alexwitt-hw7-redis-pvc
+  labels:
+    username: alexwitt
+    env: test
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: rbd
+  resources:
+    requests:
+      storage: 1Gi
