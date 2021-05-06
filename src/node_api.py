@@ -9,13 +9,15 @@ import pathlib
 import pickle
 import redis
 import threading
+import operator
+import random
 
 import flask
 from flask import request
 import requests
 import uuid
 
-NODE_IDX = str(uuid.uuid4())
+NODE_IDX = str(uuid.uuid4()).replace("-", ".")
 _NETWORK_IP = os.environ.get("NETWORK_IP", "0.0.0.0")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _BLOCK_CHAIN = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
@@ -28,6 +30,7 @@ logging.basicConfig(
     level=logging.DEBUG,
 )
 
+
 class FullNode:
     """This is a full node object."""
 
@@ -36,26 +39,13 @@ class FullNode:
         self.ledger_size = 2
         self.ledger = []
         self.block_num = 0
-        self.previous_hash = "0" * 10
+        self.previous_hash = "0" * 64
         self.block_chain = []
         self.transaction_timestamps = set()
-        self.num_transactions_per_block = 2
-
-        # Fetch the current state of the blockchain. We want to keep this in order.
-        self.num_blocks = len(list(_BLOCK_CHAIN.scan_iter("block-*")))
-        logging.info(list(_BLOCK_CHAIN.scan_iter("block-*")))
-        logging.info(f"Initializing node with blockchain history. Found {self.num_blocks} blocks.")
-        for block in range(self.num_blocks):
-            key = f"block-{block}".encode()
-            logging.info(f"Retrieving {key}.")
-            block = json.loads(_BLOCK_CHAIN.get(key), encoding="utf-8")
-            # Now add all the transactions of this block to the history. This is
-            # so we know which transactions are new or not.
-            for transaction in block["transactions"]:
-                self.transaction_timestamps.add(transaction)
-            self.previous_hash = block["previous_hash"]
-        logging.info(self.transaction_timestamps)
+        self.num_transactions_per_block = 1
         
+        # Resolve the initial chain
+        self.resolve_chain()
 
     def check_valid_chain(self, blockchain):
         """Check that a given blockchain is valid."""
@@ -70,8 +60,9 @@ class FullNode:
             original_block = {
                 key: value
                 for key, value in block.items()
-                if key not in ["hash", "nonce"]
+                if key not in ["hash", "nonce", "mined-by"]
             }
+            original_block = json.dumps(original_block, sort_keys=True)
             original_block = str(original_block) + str(block["nonce"])
             assert (
                 hashlib.sha256(str(original_block).encode()).hexdigest()
@@ -93,23 +84,29 @@ class FullNode:
 
         while True:
 
-            # Collect all the transactions from the ledger. Keep transactions in a 
+            # Collect all the transactions from the ledger. Keep transactions in a
             # separate key.
             # TODO(alex): is there a limit to the number of transactions per block?
             block = {"transactions": {}}
-            transactions = 0
             this_block_keys = set()
+
+            # Loop through and find the oldest timestamp
+            timestamps = []
             for key in _BLOCK_CHAIN.scan_iter(f"ledger-{NODE_IDX}:*"):
+                timestamps.append(key.decode("utf-8").split(":", 1)[-1])
+            timestamps.sort()
+
+            if timestamps:
+                earliest = timestamps[0]
+                key = f"ledger-{NODE_IDX}:{earliest}".encode()
                 this_block_keys.add(key)
                 data = json.loads(_BLOCK_CHAIN.get(key))
                 key = key.decode("utf-8")
                 block["transactions"][key.split(":", 1)[-1]] = data
-                transactions += 1
-                if transactions - 1 > self.num_transactions_per_block:
-                    break
+            
 
             # If there are no transactions for this block, wait.
-            if not block["transactions"]:
+            if not timestamps:
                 logging.info("No new transactions to mine.")
                 time.sleep(2.0)
                 continue
@@ -117,8 +114,8 @@ class FullNode:
             # Add the previous block's hash to this block.
             block.update({"previous_hash": self.previous_hash})
             logging.info(f"[MINING] Mining new block: {json.dumps(block, indent=2)}")
-            
-            block = str(block)
+
+            block = json.dumps(block, sort_keys=True)
             # Remove the transactions in the ledger that are being considered in
             # for this block.
             for key in _BLOCK_CHAIN.scan_iter(f"ledger-{NODE_IDX}:*"):
@@ -133,29 +130,95 @@ class FullNode:
                 new_block = block + str(nonce)
                 new_hash = hashlib.sha256(new_block.encode()).hexdigest()
                 logging.info(f"[MINING] Trying nonce: {nonce}")
-            
+
             logging.info(f"Sucessful hash: {new_hash}")
 
             block = ast.literal_eval(block)
-
-            block.update({"nonce": nonce, "hash": new_hash})
+    
+            block.update({"nonce": nonce, "hash": new_hash, "mined-by": NODE_IDX})
             logging.info(f"New block: {json.dumps(block, indent=2)}")
 
             self.block_chain.append(block)
-
             self.previous_hash = new_hash
 
-            # Now with a new mined block, send out the chain.
-            _BLOCK_CHAIN.set(
-                f"block-{self.block_num}", json.dumps(block, sort_keys=True)
-            )
+            # Check if this block is already in our database. This happens when this node
+            # copies from another node while still mining.
+            if not _BLOCK_CHAIN.exists(f"blockchain-{NODE_IDX}-{self.block_num}"):
+                # Now we mined a new block, add this to the nodes copy of the blockchain
+                _BLOCK_CHAIN.set(
+                    f"blockchain-{NODE_IDX}-{self.block_num}",
+                    json.dumps(block, sort_keys=True),
+                )
+                self.block_num += 1
+
+    def _copy_chain(self, node_idx):
+        """Copy the blockchain from node_idx to this node."""
+        self.block_num = 0
+        num_blocks = len(list(_BLOCK_CHAIN.scan_iter(f"blockchain-{node_idx}-*")))
+        for idx in range(num_blocks):
             self.block_num += 1
-    
-    def check_for_transactions(self):
+            # Get the block number
+            block = _BLOCK_CHAIN.get(f"blockchain-{node_idx}-{idx}")
+            _BLOCK_CHAIN.set(f"blockchain-{NODE_IDX}-{idx}", block)
+
+            # Also make sure to add the block's transactions to this node's list 
+            # so we don't remine the same transactions.
+            block = json.loads(block)
+            for transaction in block["transactions"]:
+                self.transaction_timestamps.add(transaction)
+            
+            # Keep track of the previous block
+            self.previous_hash = block["hash"]
+            logging.info(self.previous_hash)
+        
+        logging.info(f"Copyied chain from {node_idx} to {NODE_IDX}.")
+
+    def check_chain_valid(self, node_idx: str):
+        """Loop through the given node's blocks and validate its chain. If the chain
+        is valid, make this the accepted chain."""
+        all_node_blocks = list(_BLOCK_CHAIN.scan_iter(f"blockchain-{node_idx}-*"))
+
+        # If the other chain is the same length is ours, no need to merge.
+        if len(all_node_blocks) == self.block_num:
+            return
+        # Extract all the blocks from this node in order so we can validate the
+        # hashes of the chain.
+        blockchain = []
+        for idx in range(len(all_node_blocks)):
+            blockchain.append(json.loads(_BLOCK_CHAIN.get(f"blockchain-{node_idx}-{idx}")))
+
+        if self.check_valid_chain(blockchain):
+            logging.info(f"Found valid chain from {node_idx}. Updating {NODE_IDX} copy.")
+            self._copy_chain(node_idx)
+
+    def resolve_chain(self):
+        # First scan all the copies of the other node's blockchains to resolve
+        # conflicts. We want to get each node's chain, validate the hashes are right,
+        # then if the other chain is longer than ours, we take the longer chain
+        # as the truth. We need to sort all the keys based on node IDs.
+        all_node_blocks = list(_BLOCK_CHAIN.scan_iter("blockchain-*"))
+        # If there are no other blockchains from any nodes, we've likely just started.
+        if not all_node_blocks:
+            return
+        # Parse out the various node ids. The format is blockchain-nodeid-blocknumber
+        node_id_block_nums = [key.decode().split("-")[1]  for key in all_node_blocks]
+        node_ids = set(node_id_block_nums)
+        # Knowing the number of blocks per node chain and the unique node ids, the
+        # large nodal block chain can be found.
+        node_chain_lengths = {node: node_id_block_nums.count(node) for node in node_ids}
+        node_longest_chain, longest_length = max(node_chain_lengths.items(), key=operator.itemgetter(1))
+        # If the node with the longest chain is this node itself, don't do anything. If 
+        # is it not this node, resolve the chain.
+        if not node_longest_chain == NODE_IDX and longest_length != self.block_num:
+            self.check_chain_valid(node_longest_chain)
+
+    def check_for_updates(self):
         """Run an infinite loop to look for any new transactions that have been
         executed. If there is any new transaction, add it to a the node's database.
         """
         while True:
+            self.resolve_chain()
+
             # Scan the master ledger than copy to this node's ledger. In real life this
             # copy would be local to the node, here we just reuse the same database but
             # with a different key to simulate a different
@@ -164,20 +227,25 @@ class FullNode:
                 key_ = f"{key}"
                 if key_ not in self.transaction_timestamps:
                     self.transaction_timestamps.add(key_)
-                    _BLOCK_CHAIN.set(
-                        f"ledger-{NODE_IDX}:{key}", _BLOCK_CHAIN.get(key)
-                    )             
+                    _BLOCK_CHAIN.set(f"ledger-{NODE_IDX}:{key}", _BLOCK_CHAIN.get(key))
                     logging.info(f"Found new transaction:{key.decode()}")
             
-            time.sleep(2.0)
+            logging.info("No new transactions from transaction API.")
+
+            # This simulates different internet times, processing capabilities. Without
+            # this, there would no need to resolve conflicts because every node would
+            # move at the same speed.
+            time.sleep(random.randint(1, 5))
 
 
 if __name__ == "__main__":
 
     node = FullNode()
-    thread = threading.Thread(target=node.check_for_transactions)
+    thread = threading.Thread(target=node.check_for_updates)
     thread.daemon = True
     thread.start()
     thread = threading.Thread(target=node.mine_block)
     thread.daemon = True
     thread.start()
+
+    thread.join()

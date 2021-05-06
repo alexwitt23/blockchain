@@ -1,6 +1,6 @@
 .PHONY: up
 up:
-	docker-compose up --build
+	docker-compose up --build --scale node=3
 
 .PHONY: down
 down:

@@ -15,7 +15,8 @@ _BLOCKCHAIN_IP = os.environ.get("BLOCKCHAIN_IP", "0.0.0.0")
 app = flask.Flask("transaction")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _RD = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
-
+for key in _RD.scan_iter("*"):
+    _RD.delete(key)
 
 def create_user(username: str, password: str):
 
@@ -37,7 +38,6 @@ def create_user(username: str, password: str):
     _RD.set(new_user["username"], pickle.dumps(new_user))
 
     return "Account created.", 201
-
 
 
 @app.route("/user/new", methods=["POST"])
@@ -72,7 +72,7 @@ def create_transaction():
 
     Example:
         curl 0.0.0.0:5000/transaction/new \
-        -d '{"from": {"username": "genesis", "password": "password"}, "to": "foo", "amount": 10000}' \
+        -d '{"from": {"username": "genesis", "password": "password"}, "to": "foo", "amount": 100}' \
         -H 'Content-Type: application/json'
     """
     # Take the from's username and password and extract the private to sign the transaction.
@@ -91,7 +91,8 @@ def create_transaction():
     transaction.update(
         {
             "from": {
-                "username": info["public_key"],
+                "username": from_username,
+                "public-key": info["public_key"],
                 "signature": signature.decode("utf-8", "ignore"),
             },
             "timestamp": str(datetime.datetime.now().isoformat()),
@@ -112,7 +113,23 @@ if __name__ == "__main__":
     create_user("genesis", "password")
     create_user("foo", "bar")
 
-    # Create the first transaction and put some money into the system.
-    ...
+    # Create the first transaction and put some money into the system. Typically this
+    # might be called the "genesis" block.
+    transaction = {
+        "timestamp": str(datetime.datetime.now().isoformat()),
+        "from": {
+            "username": "genesis",
+            "public-key": "genesis",
+            "signature": "genesis",
+        },
+        "to": "foo",
+        "amount": 1000,
+    }
+    # Send this to the blockchain
+    requests.post(
+        f"http://{_BLOCKCHAIN_IP}:5001/transaction/new",
+        headers={"content-type": "application/json"},
+        data=json.dumps(transaction, sort_keys=True),
+    ).content
 
     app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)

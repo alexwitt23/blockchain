@@ -45,6 +45,12 @@ curl 0.0.0.0:5000/transaction/new -d '{"from": {"username": "myname", "password"
 
 ## Blockchain API
 
+
 ```
 curl 0.0.0.0:5001/history
+```
+
+
+```
+curl 0.0.0.0:5001/history/nodes
 ```
