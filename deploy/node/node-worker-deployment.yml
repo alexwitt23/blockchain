@@ -30,4 +30,3 @@ spec:
             fieldRef:
               fieldPath: status.podIP
         imagePullPolicy: Always
-        command: [ "python3", "src/node_api.py" ]
