@@ -8,13 +8,13 @@ implementing some of the basic operations of a blockchain for validating transac
 
 ## Requirements
 
-* A: We created a Flask REST API.
+* A: We created multiple Flask REST APIs. One for creating/deleting users and creating
+  transactions. The other allows you to read the state of the blockchain.
 
-* B: Backend Node runners that mine
+* B: Backend Node runners that mine the transaction history and resolve conflicts
+  between their copies of the blockchain.
 
 * C: Redis database to save users, transaction, blockchain
-
-* D: Strong code organization
 
 
 ## Local Development
