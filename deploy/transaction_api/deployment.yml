@@ -28,8 +28,6 @@ spec:
         env:
         - name: "REDIS_IP"
           value: "10.103.117.109"
-        - name: "HOST"
-          value: "0.0.0.0"
         - name: "BLOCKCHAIN_IP"
           value: "10.107.125.114"
         imagePullPolicy: Always
