@@ -167,7 +167,6 @@ class FullNode:
 
             # Keep track of the previous block
             self.previous_hash = block["hash"]
-            logging.info(self.previous_hash)
 
         logging.info(f"Copyied chain from {node_idx} to {NODE_IDX}.")
 

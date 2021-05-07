@@ -103,7 +103,37 @@ kubectl exec -ti blockchain-debug-5cc8cdd65f-j6kqc -- /bin/bash
 ```
 
 Now you can follow the API examples below using the right IP for the transaction and
-blockchain APIs.
+blockchain APIs that were found above with `kubectl get service`.
+
+
+### Inspecting Logs
+
+Each node worker will log to a file. The contents of these files can be found by goind
+into one of the pods and looking inside `/logging`.
+
+```
+$ kubectl get pods
+NAME                                                 READY   STATUS             RESTARTS   AGE
+node-deployment-7d79646c75-457s9                     1/1     Running            0          14m
+node-deployment-7d79646c75-vntz8 
+```
+
+Exec in:
+
+```
+kubectl exec -it node-deployment-7d79646c75-vntz8 -- /bin/bash
+```
+
+Then watch the logging file (NOTE, the file will be named something unique, though it should be
+the only file in the directory):
+
+```
+tail -f logging/8a4af293.23c6.42ca.beb3.29ac2f664ffb.txt
+```
+
+Then, if you issue a transaction command from the debug container, you'll see the mining node
+process the transaction. You can also watch all logs at once.
+
 
 #### Cleanup
 ```
@@ -115,6 +145,8 @@ kubectl delete -f deploy/blockchain_api && \
 ```
 
 ## Transaction API
+This is the interface to create and delete users and send transactions.
+If using kubernetes, remeber to use the IP of the `transaction-service`.
 
 * `/user/new`: 
 Create a new user:
@@ -156,7 +188,7 @@ blockchain network and miners will begin validating it.
 ## Blockchain API
 
 Query the blockchain history. This will extract shortest chain which is the most
-verified chain. 
+verified chain. If using kubernetes, remeber to use the IP of the `blockchain-service`.
 
 ```
 curl 0.0.0.0:5001/history
