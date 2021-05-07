@@ -93,10 +93,14 @@ def create_transaction():
     from_username = transaction["from"]["username"]
     password = transaction["from"]["password"]
     to_username = transaction["to"]
-
+    
     # Check that the from user exists.
     if not _RD.exists(from_username):
         return flask.jsonify("You must have an account to send money!"), 404
+
+    # Check that the from user is not attempting to make a transaction to their own account
+    if from_username == to_username:
+        return flask.jsonify("You are prohibited from making a transaction to your own account!"), 404
 
     # Load the from user and verify the password.
     user_info = pickle.loads(_RD.get(from_username))
