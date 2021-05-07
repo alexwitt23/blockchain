@@ -27,7 +27,7 @@ spec:
           containerPort: 5000
         env:
         - name: "REDIS_IP"
-          value: "10.109.157.242"
+          value: "10.99.219.24"
         - name: "BLOCKCHAIN_IP"
-          value: "10.101.180.25"
+          value: "10.105.176.76"
         imagePullPolicy: Always

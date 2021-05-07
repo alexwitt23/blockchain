@@ -24,5 +24,5 @@ spec:
         image: alexwitt23/node
         env:
         - name: REDIS_IP
-          value: "10.109.157.242"
+          value: "10.99.219.24"
         imagePullPolicy: Always
