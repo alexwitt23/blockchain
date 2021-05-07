@@ -18,12 +18,14 @@ _RD = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
 for key in _RD.scan_iter("*"):
     _RD.delete(key)
 
+
 def create_user(username: str, password: str):
+    """Function to create a user and add it to the database."""
+    # Check if username is in the database and return and error if it is
+    if _RD.exists(username):
+        return f"The username '{username}' already exists! Please choose another", 409
 
     new_user = {"username": username, "password": password}
-    # TODO(shawn): Check if username is in the database and return and error if it is
-    ...
-
     # Generate a new public and private key used to sign transactions.
     (pubkey, private) = rsa.newkeys(512)
 
@@ -37,7 +39,7 @@ def create_user(username: str, password: str):
     # Write the user's information to the database.
     _RD.set(new_user["username"], pickle.dumps(new_user))
 
-    return "Account created.", 201
+    return f"Account created for '{username}'.", 201
 
 
 @app.route("/user/new", methods=["POST"])
@@ -55,14 +57,27 @@ def new_user():
     return flask.jsonify(output), code
 
 
-@app.route("/user/delete", methods=["GET"])
+@app.route("/user/delete", methods=["POST"])
 def delete_user():
     """Delete a user from the account database.
     
-    Example: curl 0.0.0.0:5000/user/delete?username=myname
+    Example: curl 0.0.0.0:5000/user/delete -d '{"username": "myname", "password": "password"}' -H 'Content-Type: application/json'
+
     """
-    # TODO(shawn): Remove the user from the database
-    ...
+    # Remove the user from the database if the user exists and the password is right.
+    user = request.get_json(force=True)
+    username = user["username"]
+    password = user["password"]
+    if not _RD.exists(username):
+        return flask.jsonify(f"No user for '{username}' exists."), 404
+
+    user_info = pickle.loads(_RD.get(username))
+
+    if user_info["password"] != password:
+        return flask.jsonify("Incorrect password!"), 404
+    else:
+        _RD.delete(username)
+        return flask.jsonify(f"User '{username}' deleted."), 404
 
 
 @app.route("/transaction/new", methods=["POST"])
@@ -78,13 +93,22 @@ def create_transaction():
     # Take the from's username and password and extract the private to sign the transaction.
     transaction = request.get_json(force=True)
     from_username = transaction["from"]["username"]
+    password = transaction["from"]["username"]
+    to_username = transaction["to"]["username"]
 
-    # TODO(shawn): Check that the from user exists
-    ...
-    # TODO(shawn): Check that the to user exists
-    ...
-    print(from_username)
-    info = pickle.loads(_RD.get(from_username))
+    # Check that the from user exists.
+    if not _RD.exists(from_username):
+        return flask.jsonify("You must have an account to send money!"), 404
+
+    # Load the from user and verify the password.
+    user_info = pickle.loads(_RD.get(from_username))
+    if user_info["password"] != password:
+        return flask.jsonify("Incorrect password!"), 404
+
+    # Check that the to user exists.
+    if not _RD.exists(to_username):
+        return flask.jsonify("You must send money to someone with an account!"), 404
+    
     private_key = rsa.PrivateKey.load_pkcs1(info["private_key"])
     signature = rsa.sign(json.dumps(transaction).encode(), private_key, "SHA-256")
     # Update the transaction with the signed payment and the timestamp

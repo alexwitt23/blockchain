@@ -43,7 +43,7 @@ class FullNode:
         self.block_chain = []
         self.transaction_timestamps = set()
         self.num_transactions_per_block = 1
-        
+
         # Resolve the initial chain
         self.resolve_chain()
 
@@ -103,7 +103,6 @@ class FullNode:
                 data = json.loads(_BLOCK_CHAIN.get(key))
                 key = key.decode("utf-8")
                 block["transactions"][key.split(":", 1)[-1]] = data
-            
 
             # If there are no transactions for this block, wait.
             if not timestamps:
@@ -134,7 +133,7 @@ class FullNode:
             logging.info(f"Sucessful hash: {new_hash}")
 
             block = ast.literal_eval(block)
-    
+
             block.update({"nonce": nonce, "hash": new_hash, "mined-by": NODE_IDX})
             logging.info(f"New block: {json.dumps(block, indent=2)}")
 
@@ -161,16 +160,16 @@ class FullNode:
             block = _BLOCK_CHAIN.get(f"blockchain-{node_idx}-{idx}")
             _BLOCK_CHAIN.set(f"blockchain-{NODE_IDX}-{idx}", block)
 
-            # Also make sure to add the block's transactions to this node's list 
+            # Also make sure to add the block's transactions to this node's list
             # so we don't remine the same transactions.
             block = json.loads(block)
             for transaction in block["transactions"]:
                 self.transaction_timestamps.add(transaction)
-            
+
             # Keep track of the previous block
             self.previous_hash = block["hash"]
             logging.info(self.previous_hash)
-        
+
         logging.info(f"Copyied chain from {node_idx} to {NODE_IDX}.")
 
     def check_chain_valid(self, node_idx: str):
@@ -185,10 +184,14 @@ class FullNode:
         # hashes of the chain.
         blockchain = []
         for idx in range(len(all_node_blocks)):
-            blockchain.append(json.loads(_BLOCK_CHAIN.get(f"blockchain-{node_idx}-{idx}")))
+            blockchain.append(
+                json.loads(_BLOCK_CHAIN.get(f"blockchain-{node_idx}-{idx}"))
+            )
 
         if self.check_valid_chain(blockchain):
-            logging.info(f"Found valid chain from {node_idx}. Updating {NODE_IDX} copy.")
+            logging.info(
+                f"Found valid chain from {node_idx}. Updating {NODE_IDX} copy."
+            )
             self._copy_chain(node_idx)
 
     def resolve_chain(self):
@@ -201,13 +204,15 @@ class FullNode:
         if not all_node_blocks:
             return
         # Parse out the various node ids. The format is blockchain-nodeid-blocknumber
-        node_id_block_nums = [key.decode().split("-")[1]  for key in all_node_blocks]
+        node_id_block_nums = [key.decode().split("-")[1] for key in all_node_blocks]
         node_ids = set(node_id_block_nums)
         # Knowing the number of blocks per node chain and the unique node ids, the
         # large nodal block chain can be found.
         node_chain_lengths = {node: node_id_block_nums.count(node) for node in node_ids}
-        node_longest_chain, longest_length = max(node_chain_lengths.items(), key=operator.itemgetter(1))
-        # If the node with the longest chain is this node itself, don't do anything. If 
+        node_longest_chain, longest_length = max(
+            node_chain_lengths.items(), key=operator.itemgetter(1)
+        )
+        # If the node with the longest chain is this node itself, don't do anything. If
         # is it not this node, resolve the chain.
         if not node_longest_chain == NODE_IDX and longest_length != self.block_num:
             self.check_chain_valid(node_longest_chain)
@@ -229,7 +234,7 @@ class FullNode:
                     self.transaction_timestamps.add(key_)
                     _BLOCK_CHAIN.set(f"ledger-{NODE_IDX}:{key}", _BLOCK_CHAIN.get(key))
                     logging.info(f"Found new transaction:{key.decode()}")
-            
+
             logging.info("No new transactions from transaction API.")
 
             # This simulates different internet times, processing capabilities. Without

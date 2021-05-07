@@ -18,12 +18,12 @@ _NODES_IP = os.environ.get("NODES_IP", "0.0.0.0")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _RD = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
 app = flask.Flask("blockchain")
-app.config['JSON_SORT_KEYS'] = False
+app.config["JSON_SORT_KEYS"] = False
 
 for key in _RD.scan_iter("*"):
     _RD.delete(key)
 
-    
+
 @app.route("/transaction/new", methods=["POST"])
 def project_transaction():
     """"""
@@ -48,9 +48,9 @@ def get_history():
     all_node_blocks = list(_RD.scan_iter("blockchain-*"))
     if not all_node_blocks:
         return flask.jsonify("No history yet."), 201
-    
+
     # Parse out the various node ids. The format is blockchain-nodeid-blocknumber
-    node_id_block_nums = [key.decode().split("-")[1]  for key in all_node_blocks]
+    node_id_block_nums = [key.decode().split("-")[1] for key in all_node_blocks]
     node_ids = set(node_id_block_nums)
     # Knowing the number of blocks per node chain and the unique node ids, the
     # large nodal block chain can be found.
@@ -59,7 +59,9 @@ def get_history():
     all_node_blocks = list(_RD.scan_iter(f"blockchain-{node_shortest_chain}-*"))
     blockchain = []
     for idx in range(len(all_node_blocks)):
-        blockchain.append(json.loads(_RD.get(f"blockchain-{node_shortest_chain}-{idx}")))
+        blockchain.append(
+            json.loads(_RD.get(f"blockchain-{node_shortest_chain}-{idx}"))
+        )
 
     return flask.jsonify(blockchain), 201
 
@@ -75,9 +77,9 @@ def get_all_chains():
     all_node_blocks = list(_RD.scan_iter("blockchain-*"))
     if not all_node_blocks:
         return flask.jsonify("No history yet."), 201
-    
+
     # Parse out the various node ids. The format is blockchain-nodeid-blocknumber
-    node_id_block_nums = [key.decode().split("-")[1]  for key in all_node_blocks]
+    node_id_block_nums = [key.decode().split("-")[1] for key in all_node_blocks]
     node_ids = set(node_id_block_nums)
     # Knowing the number of blocks per node chain and the unique node ids, the
     # large nodal block chain can be found.
@@ -89,8 +91,9 @@ def get_all_chains():
         blockchain[node] = {}
         for idx in range(num_blocks):
             print(idx)
-            blockchain[node][f"block-{idx}"] = json.loads(_RD.get(f"blockchain-{node}-{idx}"))
-            
+            blockchain[node][f"block-{idx}"] = json.loads(
+                _RD.get(f"blockchain-{node}-{idx}")
+            )
 
     return flask.jsonify(blockchain), 201
 

@@ -32,14 +32,27 @@ docker-compose up -d --scale node_api=2
 ## Transaction API
 
 * `/user/new`: 
+Create a new user:
 ```
-curl 0.0.0.0:5000/user/new -d '{"username": "myname", "password": "password"}' -H 'Content-Type: application/json'
+$ curl 0.0.0.0:5000/user/new \
+  -d '{"username": "myname", "password": "password"}' \
+  -H 'Content-Type: application/json'
+
+"Account created for 'myname'."
 ```
 
-* `/user/delete`: 
+You will recieve an error if you try to create an account with a taken username.
+
+* `/user/delete`:
+Remove an account:
 ```
-curl 0.0.0.0:5000/user/delete?username=myname'
+curl 0.0.0.0:5000/user/delete \
+  -d '{"username": "myname", "password": "password"}' \
+  -H 'Content-Type: application/json'
+
+"User 'myname' deleted."
 ```
+You must have the right username and password to delete the account.
 
 * `/transaction/new`: 
 ```
