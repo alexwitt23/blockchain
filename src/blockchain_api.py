@@ -14,7 +14,6 @@ import requests
 
 NODE_NETWORK = {}
 
-_NODES_IP = os.environ.get("NODES_IP", "0.0.0.0")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _RD = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
 app = flask.Flask("blockchain")

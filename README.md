@@ -79,7 +79,7 @@ Finally, reapply these services with:
 ```
 kubectl apply -f deploy/blockchain_api && \
   kubectl apply -f deploy/transaction_api && \
-  kubectl apply -f deploy/node
+  kubectl apply -f deploy/node 
 ```
 
 NOTE, in real blockchains, each node keeps an isolated copy of the blockchain.
@@ -110,7 +110,8 @@ blockchain APIs.
 kubectl delete -f deploy/blockchain_api && \
   kubectl delete -f deploy/db && \
   kubectl delete -f deploy/transaction_api && \
-  kubectl delete -f deploy/node
+  kubectl delete -f deploy/node && \
+  kubectl delete -f deploy/debug
 ```
 
 ## Transaction API
