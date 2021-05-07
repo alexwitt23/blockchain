@@ -88,16 +88,22 @@ We keep things simple here.
 
 ### Kubernetes Usage
 
-Exec into the debug container to curl commands to the APIs.
+Find the debug pod that was created:
 
 ```
 kubectl get pods
-
-
-
-kubectl exec -ti alexwitt-hw7-debug-5cc8cdd65f-8n8j4 -- /bin/bash
+NAME                                                 READY   STATUS             RESTARTS   AGE
+blockchain-debug-5cc8cdd65f-j6kqc                    1/1     Running            0          7s
 ```
 
+Exec into this pod to interact with the APIs:
+
+```
+kubectl exec -ti blockchain-debug-5cc8cdd65f-j6kqc -- /bin/bash
+```
+
+Now you can follow the API examples below using the right IP for the transaction and
+blockchain APIs.
 
 #### Cleanup
 ```
