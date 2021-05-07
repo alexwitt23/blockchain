@@ -27,5 +27,5 @@ spec:
           containerPort: 5001
         env:
         - name: "REDIS_IP"
-          value: "10.99.219.24"
+          value: "10.97.17.66"
         imagePullPolicy: Always
