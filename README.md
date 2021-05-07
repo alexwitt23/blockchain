@@ -35,7 +35,8 @@ To get started, run:
 kubectl apply -f deploy/blockchain_api && \
   kubectl apply -f deploy/db && \
   kubectl apply -f deploy/transaction_api && \
-  kubectl apply -f deploy/node
+  kubectl apply -f deploy/node && \
+  kubectl apply -f deploy/debug
 ```
 
 There are multiple REST APIs in this project, so we'll need to get the Kubernetes
@@ -83,6 +84,20 @@ kubectl apply -f deploy/blockchain_api && \
 
 NOTE, in real blockchains, each node keeps an isolated copy of the blockchain.
 We keep things simple here.
+
+
+### Kubernetes Usage
+
+Exec into the debug container to curl commands to the APIs.
+
+```
+kubectl get pods
+
+
+
+kubectl exec -ti alexwitt-hw7-debug-5cc8cdd65f-8n8j4 -- /bin/bash
+```
+
 
 #### Cleanup
 ```
