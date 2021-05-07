@@ -93,8 +93,8 @@ def create_transaction():
     # Take the from's username and password and extract the private to sign the transaction.
     transaction = request.get_json(force=True)
     from_username = transaction["from"]["username"]
-    password = transaction["from"]["username"]
-    to_username = transaction["to"]["username"]
+    password = transaction["from"]["password"]
+    to_username = transaction["to"]
 
     # Check that the from user exists.
     if not _RD.exists(from_username):
@@ -109,14 +109,14 @@ def create_transaction():
     if not _RD.exists(to_username):
         return flask.jsonify("You must send money to someone with an account!"), 404
     
-    private_key = rsa.PrivateKey.load_pkcs1(info["private_key"])
+    private_key = rsa.PrivateKey.load_pkcs1(user_info["private_key"])
     signature = rsa.sign(json.dumps(transaction).encode(), private_key, "SHA-256")
     # Update the transaction with the signed payment and the timestamp
     transaction.update(
         {
             "from": {
                 "username": from_username,
-                "public-key": info["public_key"],
+                "public-key": user_info["public_key"],
                 "signature": signature.decode("utf-8", "ignore"),
             },
             "timestamp": str(datetime.datetime.now().isoformat()),

@@ -19,14 +19,30 @@ implementing some of the basic operations of a blockchain for validating transac
 
 ## Local Development
 
-To run the services locally, please install docker compose. Then run:
+To run the services locally, please install docker compose. You can scale how many
+miners you'd like. This will default to 2 nodes since anything less would be boring.
 
 ```
-make up
+NODES=5 make up
 ```
+All mining logs are written to the `logging` folder. The files are named by node
+id.
+
+## Kubernetes
 
 ```
-docker-compose up -d --scale node_api=2
+kubectl apply -f deploy/blockchain_api && \
+  kubectl apply -f deploy/db && \
+  kubectl apply -f deploy/transaction_api && \
+  kubectl apply -f deploy/node
+```
+
+#### Cleanup
+```
+kubectl delete -f deploy/blockchain_api && \
+  kubectl delete -f deploy/db && \
+  kubectl delete -f deploy/transaction_api && \
+  kubectl delete -f deploy/node
 ```
 
 ## Transaction API
@@ -34,7 +50,7 @@ docker-compose up -d --scale node_api=2
 * `/user/new`: 
 Create a new user:
 ```
-$ curl 0.0.0.0:5000/user/new \
+curl 0.0.0.0:5000/user/new \
   -d '{"username": "myname", "password": "password"}' \
   -H 'Content-Type: application/json'
 
@@ -54,16 +70,66 @@ curl 0.0.0.0:5000/user/delete \
 ```
 You must have the right username and password to delete the account.
 
-* `/transaction/new`: 
+* `/transaction/new`:
+Send a transaction! The account you need the username and password of your account. You
+also need the username of an account that exists.
 ```
-curl 0.0.0.0:5000/transaction/new -d '{"from": {"username": "myname", "password": "password"}, "to": "notme", "amount": 100}' -H 'Content-Type: application/json'
+curl 0.0.0.0:5000/transaction/new \
+  -d '{"from": {"username": "myname", "password": "password"}, "to": "notme", "amount": 100}' \
+  -H 'Content-Type: application/json'
+
+"Transaction added to ledger."
 ```
+
+Once you execute a transaction, there is no going back. This transaction is sent to the
+blockchain network and miners will begin validating it.
 
 ## Blockchain API
 
+Query the blockchain history. This will extract shortest chain which is the most
+verified chain. 
 
 ```
 curl 0.0.0.0:5001/history
+
+[
+  {
+    "hash": "00308d327e99fafbb90f8e9072627d9e3bb708ff805f4abaf5986019a94fd28b", 
+    "mined-by": "23822524.065c.4234.8cff.2076a28772b3", 
+    "nonce": 108, 
+    "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000", 
+    "transactions": {
+      "b'transaction:2021-05-07T01:20:11.135929'": {
+        "amount": 1000, 
+        "from": {
+          "public-key": "genesis", 
+          "signature": "genesis", 
+          "username": "genesis"
+        }, 
+        "timestamp": "2021-05-07T01:20:11.135929", 
+        "to": "foo"
+      }
+    }
+  }, 
+  {
+    "hash": "00011b76cfff4c5c8aaff2e94996fba3a2679cced10c12028b07b22f43a78945", 
+    "mined-by": "23822524.065c.4234.8cff.2076a28772b3", 
+    "nonce": 430, 
+    "previous_hash": "00308d327e99fafbb90f8e9072627d9e3bb708ff805f4abaf5986019a94fd28b", 
+    "transactions": {
+      "b'transaction:2021-05-07T01:20:30.322384'": {
+        "amount": 100, 
+        "from": {
+          "public-key": "-----BEGIN RSA PUBLIC KEY-----\nMEgCQQDPyFwxRyerCll7BIrbevqQ86zdnfqc5pA0tow/+W3oNbDBbcGlzHdqGZV0\n/On8HLl54ccpl/eFLacXmRNfyJgZAgMBAAE=\n-----END RSA PUBLIC KEY-----\n", 
+          "signature": "c\u0012X\u000f\u0004g6<4\u0007)`OB\u0002-b ~jC}R\"#\u0017\u0017S<dr\u00010]io", 
+          "username": "myname"
+        }, 
+        "timestamp": "2021-05-07T01:20:30.322384", 
+        "to": "myname"
+      }
+    }
+  }
+]
 ```
 
 
@@ -74,21 +140,120 @@ that are present across each node should be 100% identical.
 
 ```
 curl 0.0.0.0:5001/history/nodes
-```
-
-
-## Kubernetes
-
-```
-kubectl apply -f deploy/blockchain_api && \
-  kubectl apply -f deploy/db && \
-  kubectl apply -f deploy/transaction_api && \
-  kubectl apply -f deploy/node
-```
-
-```
-kubectl delete -f deploy/blockchain_api && \
-  kubectl delete -f deploy/db && \
-  kubectl delete -f deploy/transaction_api && \
-  kubectl delete -f deploy/node
+{
+  "61217525.e8c4.405b.9813.dee50079cf15": {
+    "block-0": {
+      "hash": "00308d327e99fafbb90f8e9072627d9e3bb708ff805f4abaf5986019a94fd28b", 
+      "mined-by": "23822524.065c.4234.8cff.2076a28772b3", 
+      "nonce": 108, 
+      "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000", 
+      "transactions": {
+        "b'transaction:2021-05-07T01:20:11.135929'": {
+          "amount": 1000, 
+          "from": {
+            "public-key": "genesis", 
+            "signature": "genesis", 
+            "username": "genesis"
+          }, 
+          "timestamp": "2021-05-07T01:20:11.135929", 
+          "to": "foo"
+        }
+      }
+    }, 
+    "block-1": {
+      "hash": "00011b76cfff4c5c8aaff2e94996fba3a2679cced10c12028b07b22f43a78945", 
+      "mined-by": "23822524.065c.4234.8cff.2076a28772b3", 
+      "nonce": 430, 
+      "previous_hash": "00308d327e99fafbb90f8e9072627d9e3bb708ff805f4abaf5986019a94fd28b", 
+      "transactions": {
+        "b'transaction:2021-05-07T01:20:30.322384'": {
+          "amount": 100, 
+          "from": {
+            "public-key": "-----BEGIN RSA PUBLIC KEY-----\nMEgCQQDPyFwxRyerCll7BIrbevqQ86zdnfqc5pA0tow/+W3oNbDBbcGlzHdqGZV0\n/On8HLl54ccpl/eFLacXmRNfyJgZAgMBAAE=\n-----END RSA PUBLIC KEY-----\n", 
+            "signature": "c\u0012X\u000f\u0004g6<4\u0007)`OB\u0002-b ~jC}R\"#\u0017\u0017S<dr\u00010]io", 
+            "username": "myname"
+          }, 
+          "timestamp": "2021-05-07T01:20:30.322384", 
+          "to": "myname"
+        }
+      }
+    }
+  }, 
+  "23822524.065c.4234.8cff.2076a28772b3": {
+    "block-0": {
+      "hash": "00308d327e99fafbb90f8e9072627d9e3bb708ff805f4abaf5986019a94fd28b", 
+      "mined-by": "23822524.065c.4234.8cff.2076a28772b3", 
+      "nonce": 108, 
+      "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000", 
+      "transactions": {
+        "b'transaction:2021-05-07T01:20:11.135929'": {
+          "amount": 1000, 
+          "from": {
+            "public-key": "genesis", 
+            "signature": "genesis", 
+            "username": "genesis"
+          }, 
+          "timestamp": "2021-05-07T01:20:11.135929", 
+          "to": "foo"
+        }
+      }
+    }, 
+    "block-1": {
+      "hash": "00011b76cfff4c5c8aaff2e94996fba3a2679cced10c12028b07b22f43a78945", 
+      "mined-by": "23822524.065c.4234.8cff.2076a28772b3", 
+      "nonce": 430, 
+      "previous_hash": "00308d327e99fafbb90f8e9072627d9e3bb708ff805f4abaf5986019a94fd28b", 
+      "transactions": {
+        "b'transaction:2021-05-07T01:20:30.322384'": {
+          "amount": 100, 
+          "from": {
+            "public-key": "-----BEGIN RSA PUBLIC KEY-----\nMEgCQQDPyFwxRyerCll7BIrbevqQ86zdnfqc5pA0tow/+W3oNbDBbcGlzHdqGZV0\n/On8HLl54ccpl/eFLacXmRNfyJgZAgMBAAE=\n-----END RSA PUBLIC KEY-----\n", 
+            "signature": "c\u0012X\u000f\u0004g6<4\u0007)`OB\u0002-b ~jC}R\"#\u0017\u0017S<dr\u00010]io", 
+            "username": "myname"
+          }, 
+          "timestamp": "2021-05-07T01:20:30.322384", 
+          "to": "myname"
+        }
+      }
+    }
+  }, 
+  "34b61774.c418.4fca.a80a.2616c1163689": {
+    "block-0": {
+      "hash": "00308d327e99fafbb90f8e9072627d9e3bb708ff805f4abaf5986019a94fd28b", 
+      "mined-by": "23822524.065c.4234.8cff.2076a28772b3", 
+      "nonce": 108, 
+      "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000", 
+      "transactions": {
+        "b'transaction:2021-05-07T01:20:11.135929'": {
+          "amount": 1000, 
+          "from": {
+            "public-key": "genesis", 
+            "signature": "genesis", 
+            "username": "genesis"
+          }, 
+          "timestamp": "2021-05-07T01:20:11.135929", 
+          "to": "foo"
+        }
+      }
+    }, 
+    "block-1": {
+      "hash": "00011b76cfff4c5c8aaff2e94996fba3a2679cced10c12028b07b22f43a78945", 
+      "mined-by": "23822524.065c.4234.8cff.2076a28772b3", 
+      "nonce": 430, 
+      "previous_hash": "00308d327e99fafbb90f8e9072627d9e3bb708ff805f4abaf5986019a94fd28b", 
+      "transactions": {
+        "b'transaction:2021-05-07T01:20:30.322384'": {
+          "amount": 100, 
+          "from": {
+            "public-key": "-----BEGIN RSA PUBLIC KEY-----\nMEgCQQDPyFwxRyerCll7BIrbevqQ86zdnfqc5pA0tow/+W3oNbDBbcGlzHdqGZV0\n/On8HLl54ccpl/eFLacXmRNfyJgZAgMBAAE=\n-----END RSA PUBLIC KEY-----\n", 
+            "signature": "c\u0012X\u000f\u0004g6<4\u0007)`OB\u0002-b ~jC}R\"#\u0017\u0017S<dr\u00010]io", 
+            "username": "myname"
+          }, 
+          "timestamp": "2021-05-07T01:20:30.322384", 
+          "to": "myname"
+        }
+      }
+    }
+  }
+}
 ```
