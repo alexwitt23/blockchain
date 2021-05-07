@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main
-jobs:
 
+jobs:
 
   docker:
     runs-on: ubuntu-latest
@@ -25,7 +25,7 @@ jobs:
         run: docker push alexwitt23/blockchain-api
 
       - name: Build transaction-api image
-        run: docker build -f Dockerfiles/Dockerfile.transaction -t alexwitt23/transaction-api .
+        run: docker build -f Dockerfiles/Dockerfile.transactions -t alexwitt23/transaction-api .
 
       - name: Push transaction-api image
         run: docker push alexwitt23/transaction-api
