@@ -29,5 +29,5 @@ spec:
         - name: "REDIS_IP"
           value: "10.97.17.66"
         - name: "BLOCKCHAIN_IP"
-          value: "10.97.17.66"
+          value: "10.97.97.171"
         imagePullPolicy: Always
