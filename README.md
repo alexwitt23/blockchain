@@ -108,7 +108,7 @@ blockchain APIs that were found above with `kubectl get service`.
 
 ### Inspecting Logs
 
-Each node worker will log to a file. The contents of these files can be found by goind
+Each node worker will log to a file. The contents of these files can be found by going
 into one of the pods and looking inside `/logging`.
 
 ```
