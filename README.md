@@ -30,12 +30,59 @@ id.
 
 ## Kubernetes
 
+To get started, run:
 ```
 kubectl apply -f deploy/blockchain_api && \
   kubectl apply -f deploy/db && \
   kubectl apply -f deploy/transaction_api && \
   kubectl apply -f deploy/node
 ```
+
+There are multiple REST APIs in this project, so we'll need to get the Kubernetes
+service IPs and add them to the different deployment files.
+
+```
+$ kubectl get service
+NAME                          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+blockchain-redis-service      ClusterIP   10.101.248.127   <none>        6379/TCP         55m
+blockchain-service            ClusterIP   10.110.183.205   <none>        5001/TCP         55m
+transaction-service           ClusterIP   10.99.107.3      <none>        5000/TCP         55m
+```
+
+* In `deploy/blockchain_api/deployment.yml`, add the `blockchain-redis-service` CLUSTER-IP.
+```
+env:
+- name: "REDIS_IP"
+  value: "10.101.248.127"
+```
+
+* In `deploy/node/deployment.yml`, add the `blockchain-redis-service` CLUSTER-IP.
+```
+env:
+- name: "REDIS_IP"
+  value: "10.101.248.127"
+```
+
+* In `deploy/transaction_api/deployment.yml`, add the `blockchain-redis-service` CLUSTER-IP
+and the `blockchain-service` CLUSTER-IP.
+```
+env:
+- name: "REDIS_IP"
+  value: "10.101.248.127"
+- name: "BLOCKCHAIN_IP"
+  value: "10.110.183.205"
+```
+
+Finally, reapply these services with:
+
+```
+kubectl apply -f deploy/blockchain_api && \
+  kubectl apply -f deploy/transaction_api && \
+  kubectl apply -f deploy/node
+```
+
+NOTE, in real blockchains, each node keeps an isolated copy of the blockchain.
+We keep things simple here.
 
 #### Cleanup
 ```

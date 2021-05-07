@@ -18,7 +18,6 @@ import requests
 import uuid
 
 NODE_IDX = str(uuid.uuid4()).replace("-", ".")
-_NETWORK_IP = os.environ.get("NETWORK_IP", "0.0.0.0")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _BLOCK_CHAIN = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
 app = flask.Flask("blockchain")
