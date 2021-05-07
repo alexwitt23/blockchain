@@ -26,3 +26,4 @@ spec:
         - name: REDIS_IP
           value: "10.99.219.24"
         imagePullPolicy: Always
+        command: [ "python3", "/src/node_api.py" ]
