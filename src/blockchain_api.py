@@ -19,9 +19,6 @@ _RD = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
 app = flask.Flask("blockchain")
 app.config["JSON_SORT_KEYS"] = False
 
-for key in _RD.scan_iter("*"):
-    _RD.delete(key)
-
 
 @app.route("/transaction/new", methods=["POST"])
 def project_transaction():

@@ -15,8 +15,6 @@ _BLOCKCHAIN_IP = os.environ.get("BLOCKCHAIN_IP", "0.0.0.0")
 _REDIS_IP = os.environ.get("REDIS_IP", "0.0.0.0")
 _RD = redis.StrictRedis(host=_REDIS_IP, port=6379, db=0)
 app = flask.Flask("transaction")
-for key in _RD.scan_iter("*"):
-    _RD.delete(key)
 
 
 def create_user(username: str, password: str):
